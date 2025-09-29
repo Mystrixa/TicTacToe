@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>9x9 Grid + Notes + Drawing</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- Sidebar -->
+  <div class="sidebar" id="sidebar">
+    <!-- Top notes with drawing overlay -->
+    <div class="notes-container">
+      <textarea class="notes-top" id="notesTop" placeholder="Main notes (scoreboard, rules, etc)..."></textarea>
+      <canvas id="drawCanvas"></canvas>
+
+      <div class="draw-tools">
+        <button id="drawToggle" title="Toggle draw mode">✏️ Draw</button>
+        <button id="eraseToggle" title="Toggle eraser">🧽 Erase</button>
+        <button id="clearDraw" title="Clear drawing">❌ Clear</button>
+      </div>
+    </div>
+
+    <!-- Middle controls -->
+    <div class="bottom-controls-container">
+      <div class="page-controls">
+        <button id="prevPage">⬅ Prev</button>
+        <span id="pageNumber">Page 1</span>
+        <button id="nextPage">Next ➡</button>
+      </div>
+
+      <div class="sector-controls">
+        <button id="addSector">➕ Add Sector</button>
+        <button id="removeSector">➖ Remove Sector</button>
+      </div>
+    </div>
+
+    <!-- Bottom notes (global) -->
+    <div class="notes-bottom-container" id="notesBottomContainer"></div>
+  </div>
+
+  <!-- Main area (grid + tools) -->
+  <div class="main">
+    <div class="grid" id="grid"></div>
+
+    <div class="toolbar" id="toolbar">
+      <button class="color-btn" id="btn1"></button>
+      <button class="color-btn" id="btn2"></button>
+      <button class="color-btn" id="btn3"></button>
+      <button class="color-btn" id="btn4"></button>
+    </div>
+  </div>
+
+  <!-- Sidebar toggle -->
+  <button id="toggleNotes">⏴</button>
+
+  <!-- Color palette popup -->
+  <div class="palette" id="palette"></div>
+
+  <script src="script.js"></script>
+</body>
+</html>

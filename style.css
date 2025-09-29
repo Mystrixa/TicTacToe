@@ -1,0 +1,229 @@
+* { box-sizing: border-box; }
+
+body {
+  display: flex;
+  height: 100vh;
+  margin: 0;
+  background: #fafafa;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+}
+
+/* ---------- SIDEBAR ---------- */
+.sidebar {
+  flex: 6;             /* ~60% width */
+  display: flex;
+  flex-direction: column;
+  border-right: 2px solid #ccc;
+  height: 100vh;
+  background: #fff;
+  transition: flex 0.3s ease, width 0.3s ease;
+}
+
+/* collapsed state: hide sidebar completely */
+.sidebar.collapsed {
+  flex: 0 0 0;
+  width: 0;
+  min-width: 0;
+  overflow: hidden;
+  border-right: none;
+}
+
+/* Top big notes area */
+.notes-container {
+  flex: none;
+  height: 70%;
+  position: relative;
+  border-bottom: 2px solid #eee;
+  background: white;
+  display: flex;
+  flex-direction: column;
+}
+.notes-top {
+  width: 100%;
+  height: 100%;
+  padding: 12px;
+  font-size: 15px;
+  line-height: 1.4;
+  resize: none;
+  border: none;
+  outline: none;
+  background: white;
+  z-index: 1;
+  color: #111;
+}
+
+/* Canvas overlay */
+#drawCanvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 2;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.draw-tools {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 3;
+  display: flex;
+  gap: 6px;
+}
+.draw-tools button {
+  background: #444;
+  color: #fff;
+  border: none;
+  padding: 6px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+}
+.draw-tools button.active { background: #007bff; }
+
+/* Middle controls row */
+.bottom-controls-container {
+  flex: none;
+  height: 10%;
+  min-height: 54px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px;
+  background: #f6f6f6;
+  border-bottom: 2px solid #eee;
+}
+.page-controls { display: flex; gap: 8px; align-items: center; }
+.page-controls button,
+.sector-controls button {
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: none;
+  background: #444;
+  color: #fff;
+  cursor: pointer;
+}
+#pageNumber { font-weight: 600; }
+
+/* Bottom notes area */
+.notes-bottom-container {
+  flex: none;
+  height: 20%;
+  min-height: 84px;
+  display: flex;
+  background: white;
+  overflow: hidden;
+}
+.notes-bottom-sector {
+  flex: 1;
+  border-left: 1px solid #eee;
+  padding: 8px;
+  font-size: 14px;
+  resize: none;
+  overflow-y: auto;
+}
+.notes-bottom-sector:first-child { border-left: none; }
+
+/* ---------- MAIN (grid) ---------- */
+.main {
+  flex: 4;             /* ~40% width */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center; /* perfect centering */
+  padding: 18px;
+  overflow: auto;
+}
+
+/* Grid */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(9, 60px);
+  grid-template-rows: repeat(9, 60px);
+  gap: 6px;
+}
+
+/* Wrapper for cell + coord */
+.cell-wrapper {
+  width: 60px;
+  height: 60px;
+  position: relative;
+}
+.cell-wrapper .cell {
+  width: 100%;
+  height: 100%;
+  text-align: center;
+  font-size: 26px;
+  border: 1px solid #d0d0d0;
+  border-radius: 8px;
+  background: white;
+  padding: 0;
+  line-height: 56px;
+}
+.cell-wrapper .cell:focus {
+  outline: none;
+  box-shadow: inset 0 0 0 3px rgba(30,144,255,0.15);
+}
+.coord {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  font-size: 10px;
+  color: rgba(0,0,0,0.45);
+  pointer-events: none;
+  display: none;
+}
+
+/* Toolbar color buttons */
+.toolbar {
+  margin-top: 12px;
+  display: flex;
+  gap: 12px;
+}
+.color-btn {
+  width: 72px;
+  height: 40px;
+  border-radius: 12px;
+  border: 2px solid #999;
+  cursor: pointer;
+}
+#btn1 { background: #ffdddd; }
+#btn2 { background: #dde7ff; }
+#btn3 { background: #ddffdd; }
+#btn4 { background: #fffacd; }
+
+/* Sidebar toggle button */
+#toggleNotes {
+  position: fixed;
+  left: 8px;
+  bottom: 12px;
+  z-index: 9999;
+  background: #444;
+  color: #fff;
+  border: none;
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+/* Palette popup */
+.palette {
+  position: absolute;
+  display: none;
+  background: white;
+  border: 1px solid #ddd;
+  padding: 8px;
+  gap: 8px;
+  z-index: 3000;
+  box-shadow: 0 8px 18px rgba(0,0,0,0.12);
+  border-radius: 8px;
+  display: flex;
+  flex-wrap: wrap;
+}
+.palette div {
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
+  border: 1px solid #bbb;
+  cursor: pointer;
+}
