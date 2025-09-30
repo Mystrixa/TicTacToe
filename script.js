@@ -20,6 +20,9 @@ const btn4 = document.getElementById("btn4");
 const colorButtons = [btn1, btn2, btn3, btn4];
 let selectedCell = null;
 
+/* ======= STATE ======= */
+let showCoords = false;
+
 /* ======= PAGES (only top notes + drawing are paged) ======= */
 let pages = [{ text: "", drawing: null }];
 let currentPage = 0;
@@ -150,7 +153,7 @@ function loadGrid() {
     const input = document.createElement("input");
     input.className = "cell";
     input.setAttribute("maxlength", "2");
-    input.style.borderColor = gridColors[currentGridIndex]; // border color for this grid
+    input.style.borderColor = gridColors[currentGridIndex];
 
     const row = Math.floor(i / cols), col = i % cols;
     const coord = document.createElement("span");
@@ -165,16 +168,8 @@ function loadGrid() {
 
     input.addEventListener("focus", () => { selectedCell = input; });
     input.addEventListener("mousedown", () => { selectedCell = input; });
-    input.addEventListener("input", () => {
-      const val = input.value.trim();
-      if (/^`[1-4]$/.test(val)) {
-        const index = parseInt(val[1]) - 1;
-        if (colorButtons[index]) {
-          input.style.background = colorButtons[index].dataset.color;
-          input.value = "";
-        }
-      }
-    });
+
+    // no more backtick shortcuts here 👇
 
     input.addEventListener("contextmenu", (e) => {
       e.preventDefault();
@@ -203,20 +198,48 @@ function loadGrid() {
   }
 }
 
-// Keybinds for cycling grids
-document.addEventListener("keydown", e => {
-  if (e.key === "=") {
-    saveGrid();
-    currentGridIndex = (currentGridIndex + 1) % gridColors.length;
-    loadGrid();
-  } else if (e.key === "-") {
-    saveGrid();
-    currentGridIndex = (currentGridIndex - 1 + gridColors.length) % gridColors.length;
-    loadGrid();
+/* ======= KEYBIND HANDLING ======= */
+document.addEventListener("keydown", (e) => {
+  // Ctrl/Cmd + 1..4 toggle colors
+  const isModifier = e.ctrlKey || e.metaKey;
+  if (isModifier && ["1","2","3","4"].includes(e.key)) {
+    if (selectedCell) {
+      const idx = parseInt(e.key, 10) - 1;
+      const color = colorButtons[idx] ? colorButtons[idx].dataset.color : null;
+      if (color) {
+        const currentBg = selectedCell.style.background || "";
+        selectedCell.style.background = (currentBg === color) ? "white" : color;
+      }
+    }
+    e.preventDefault();
+    return;
+  }
+
+  // toggle coords with "c" (not while typing in inputs/textareas)
+  if (e.key.toLowerCase() === "c") {
+    const active = document.activeElement;
+    const tag = active && active.tagName;
+    if (tag === "INPUT" || tag === "TEXTAREA" || active.isContentEditable) return;
+    showCoords = !showCoords;
+    document.querySelectorAll(".coord").forEach(span => span.style.display = showCoords ? "block" : "none");
   }
 });
 
-/* ======= COLOR BUTTONS ======= */
+document.addEventListener("keyup", (e) => {
+  if (e.key !== "=" && e.key !== "-") return;
+
+  const active = document.activeElement;
+  const isCellInput = active && active.classList && active.classList.contains("cell");
+  const isNotes = active === notesTop || (active && active.classList.contains("notes-bottom-sector"));
+  if (isCellInput || isNotes) return; // don’t switch if typing in notes or grid cells
+
+  saveGrid();
+  if (e.key === "=") currentGridIndex = (currentGridIndex + 1) % gridColors.length;
+  else currentGridIndex = (currentGridIndex - 1 + gridColors.length) % gridColors.length;
+  loadGrid();
+});
+
+/* ======= COLOR BUTTONS & PALETTE ======= */
 colorButtons.forEach(btn => {
   const computed = getComputedStyle(btn).backgroundColor;
   btn.dataset.color = computed;
@@ -243,8 +266,10 @@ function showPalette(button, e) {
     palette.appendChild(d);
   });
   palette.style.display = "flex";
-  palette.style.left = e.clientX + "px";
-  palette.style.top = e.clientY + "px";
+  const x = Math.min(window.innerWidth - 120, Math.max(8, e.clientX));
+  const y = Math.min(window.innerHeight - 120, Math.max(8, e.clientY));
+  palette.style.left = x + "px";
+  palette.style.top = y + "px";
 }
 document.addEventListener("click", (ev) => {
   if (!palette.contains(ev.target) && !colorButtons.includes(ev.target)) {
@@ -266,24 +291,13 @@ document.getElementById("addSector").addEventListener("click", addSector);
 document.getElementById("removeSector").addEventListener("click", removeSector);
 if (!notesBottomContainer.children.length) addSector();
 
-/* ======= Toggle coords ======= */
-let showCoords = false;
-document.addEventListener("keydown", e => {
-  const tag = document.activeElement.tagName;
-  if (tag === "TEXTAREA" || tag === "INPUT" || document.activeElement.isContentEditable) return;
-  if (e.key.toLowerCase() === "c") {
-    showCoords = !showCoords;
-    document.querySelectorAll(".coord").forEach(span => span.style.display = showCoords ? "block" : "none");
-  }
-});
-
 /* ======= Sidebar toggle ======= */
 toggleBtn.addEventListener("click", () => {
   sidebar.classList.toggle("collapsed");
   toggleBtn.textContent = sidebar.classList.contains("collapsed") ? "⏵" : "⏴";
 });
 
-/* ======= keep notes saved when typing ======= */
+/* ======= Autosave top notes ======= */
 notesTop.addEventListener("input", savePage);
 
 /* ======= INIT ======= */
