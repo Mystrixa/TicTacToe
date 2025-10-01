@@ -138,10 +138,11 @@ body {
 /* Grid */
 .grid {
   display: grid;
-  grid-template-columns: repeat(9, 60px);
-  grid-template-rows: repeat(9, 60px);
   gap: 6px;
+  overflow: auto;
+  max-width: 100%;
 }
+
 
 /* Wrapper for cell + coord */
 .cell-wrapper {
@@ -226,4 +227,9 @@ body {
   border-radius: 6px;
   border: 1px solid #bbb;
   cursor: pointer;
+}
+
+/* Tiny grid resize button (JS handles positioning) */
+#gridSizeBtn {
+  /* minimal style applied via JS */
 }
