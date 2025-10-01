@@ -1,4 +1,4 @@
-/* ======= DOM ======= */
+/* ======= DOM ELEMENTS ======= */
 const notesTop = document.getElementById("notesTop");
 const drawCanvas = document.getElementById("drawCanvas");
 const drawToggle = document.getElementById("drawToggle");
@@ -19,13 +19,12 @@ const btn3 = document.getElementById("btn3");
 const btn4 = document.getElementById("btn4");
 const colorButtons = [btn1, btn2, btn3, btn4];
 let selectedCell = null;
-
-/* ======= STATE ======= */
 let showCoords = false;
 
-/* ======= PAGES (only top notes + drawing are paged) ======= */
+/* ======= MULTI-PAGE NOTES + DRAWING ======= */
 let pages = [{ text: "", drawing: null }];
 let currentPage = 0;
+
 function savePage() {
   const ctx = drawCanvas.getContext("2d");
   pages[currentPage] = {
@@ -33,6 +32,45 @@ function savePage() {
     drawing: drawCanvas.toDataURL()
   };
 }
+
+// ======= CTRL/CMD + 1–4 COLOR SHORTCUTS =======
+document.addEventListener("keydown", (e) => {
+  const isModifier = e.ctrlKey || e.metaKey; // Ctrl (Win) or Cmd (Mac)
+
+  if (isModifier && ["1","2","3","4"].includes(e.key)) {
+    if (selectedCell) {
+      const idx = parseInt(e.key, 10) - 1;
+      const color = colorButtons[idx] ? colorButtons[idx].dataset.color : null;
+      if (color) {
+        const currentBg = selectedCell.style.background || "";
+        selectedCell.style.background = (currentBg === color) ? "white" : color;
+      }
+    }
+    e.preventDefault();
+    return;
+  }
+
+  // optional: toggle coordinates with 'c'
+  if (e.key.toLowerCase() === "c") {
+    const active = document.activeElement;
+    const tag = active && active.tagName;
+    if (tag === "INPUT" || tag === "TEXTAREA" || active.isContentEditable) return;
+    showCoords = !showCoords;
+    document.querySelectorAll(".coord").forEach(span => 
+      span.style.display = showCoords ? "block" : "none"
+    );
+  }
+});
+
+function getColumnLetter(n) {
+  let letters = "";
+  while (n >= 0) {
+    letters = String.fromCharCode((n % 26) + 65) + letters;
+    n = Math.floor(n / 26) - 1;
+  }
+  return letters;
+}
+
 function loadPage() {
   const page = pages[currentPage] || { text: "", drawing: null };
   notesTop.value = page.text || "";
@@ -44,30 +82,28 @@ function loadPage() {
   if (page.drawing) {
     const img = new Image();
     img.src = page.drawing;
-    img.onload = () => {
-      ctx.drawImage(img, 0, 0, drawCanvas.width, drawCanvas.height);
-    };
+    img.onload = () => ctx.drawImage(img, 0, 0, drawCanvas.width, drawCanvas.height);
   }
   pageNumber.textContent = `Page ${currentPage + 1}`;
 }
-function nextPage() {
+
+nextPageBtn.addEventListener("click", () => {
   savePage();
   currentPage++;
   if (!pages[currentPage]) pages[currentPage] = { text: "", drawing: null };
   loadPage();
-}
-function prevPage() {
+});
+prevPageBtn.addEventListener("click", () => {
   if (currentPage === 0) return;
   savePage();
   currentPage--;
   loadPage();
-}
-nextPageBtn.addEventListener("click", nextPage);
-prevPageBtn.addEventListener("click", prevPage);
+});
 
-/* ======= CANVAS / DRAWING ======= */
+/* ======= DRAWING CANVAS ======= */
 let drawing = false;
 let erasing = false;
+
 function resizeCanvas() {
   const rect = drawCanvas.getBoundingClientRect();
   drawCanvas.width = Math.max(1, Math.floor(rect.width));
@@ -100,10 +136,12 @@ clearDrawBtn.addEventListener("click", () => {
   ctx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
   savePage();
 });
+
 function getCanvasPos(e) {
   const rect = drawCanvas.getBoundingClientRect();
   return { x: Math.round(e.clientX - rect.left), y: Math.round(e.clientY - rect.top) };
 }
+
 drawCanvas.addEventListener("pointerdown", (e) => {
   drawing = true;
   const ctx = drawCanvas.getContext("2d");
@@ -130,22 +168,28 @@ drawCanvas.addEventListener("pointermove", (e) => {
   });
 });
 
-/* ======= MULTI-GRID ======= */
-const gridColors = ["#d0d0d0", "red", "blue", "green", "purple"];
-let grids = Array(gridColors.length).fill(null).map(() => []);
-let currentGridIndex = 0;
+/* ======= MULTI-LAYER GRID WITH DYNAMIC SIZES ======= */
+gridColors = ["#d0d0d0", "red", "blue", "green", "purple"];
+grids = gridColors.map(() => ({ cells: [], rows: 9, cols: 9 }));
+currentGridIndex = 0;
 
 function saveGrid() {
   const cells = Array.from(grid.querySelectorAll(".cell"));
-  grids[currentGridIndex] = cells.map(cell => ({
-    value: cell.value,
-    bg: cell.style.background
-  }));
+  const layer = grids[currentGridIndex];
+  layer.cells = cells.map(c => ({ value: c.value, bg: c.style.background || "white" }));
 }
+
 function loadGrid() {
   grid.innerHTML = "";
-  const state = grids[currentGridIndex];
-  const rows = 9, cols = 9;
+  const layer = grids[currentGridIndex];
+  const rows = layer.rows || 9;
+  const cols = layer.cols || 9;
+  const state = layer.cells || [];
+
+  // FIX: dynamically set grid columns so grid forms a rectangle/square
+  grid.style.gridTemplateColumns = `repeat(${cols}, 60px)`;
+  grid.style.gridAutoRows = `60px`;
+
   for (let i = 0; i < rows * cols; i++) {
     const wrapper = document.createElement("div");
     wrapper.className = "cell-wrapper";
@@ -155,21 +199,21 @@ function loadGrid() {
     input.setAttribute("maxlength", "2");
     input.style.borderColor = gridColors[currentGridIndex];
 
-    const row = Math.floor(i / cols), col = i % cols;
+    const rowIdx = Math.floor(i / cols);
+    const colIdx = i % cols;
+
     const coord = document.createElement("span");
     coord.className = "coord";
-    coord.textContent = String.fromCharCode(65 + row) + (col + 1);
+    coord.textContent = getColumnLetter(rowIdx) + (colIdx + 1);
     coord.style.display = showCoords ? "block" : "none";
 
-    if (state && state[i]) {
+    if (state[i]) {
       input.value = state[i].value;
       input.style.background = state[i].bg;
     }
 
     input.addEventListener("focus", () => { selectedCell = input; });
     input.addEventListener("mousedown", () => { selectedCell = input; });
-
-    // no more backtick shortcuts here 👇
 
     input.addEventListener("contextmenu", (e) => {
       e.preventDefault();
@@ -198,44 +242,61 @@ function loadGrid() {
   }
 }
 
-/* ======= KEYBIND HANDLING ======= */
-document.addEventListener("keydown", (e) => {
-  // Ctrl/Cmd + 1..4 toggle colors
-  const isModifier = e.ctrlKey || e.metaKey;
-  if (isModifier && ["1","2","3","4"].includes(e.key)) {
-    if (selectedCell) {
-      const idx = parseInt(e.key, 10) - 1;
-      const color = colorButtons[idx] ? colorButtons[idx].dataset.color : null;
-      if (color) {
-        const currentBg = selectedCell.style.background || "";
-        selectedCell.style.background = (currentBg === color) ? "white" : color;
-      }
-    }
-    e.preventDefault();
+
+/* ======= GRID SIZE POPUP BUTTON ======= */
+const gridSizeBtn = document.createElement("button");
+gridSizeBtn.id = "gridSizeBtn";
+gridSizeBtn.title = "Set Grid Size";
+gridSizeBtn.style.cssText = `
+  position: fixed; left: 8px; bottom: 44px;
+  width: 24px; height: 24px;
+  font-size: 14px; padding: 0;
+  border-radius: 4px; border: none;
+  background: #444; color: #fff; cursor: pointer;
+`;
+gridSizeBtn.textContent = "⚙";
+document.body.appendChild(gridSizeBtn);
+
+gridSizeBtn.addEventListener("click", () => {
+  const layer = grids[currentGridIndex];
+  const newRows = parseInt(prompt("Enter number of rows (1–100):", layer.rows), 10);
+  const newCols = parseInt(prompt("Enter number of columns (1–100):", layer.cols), 10);
+
+  if (
+    isNaN(newRows) || isNaN(newCols) ||
+    newRows < 1 || newCols < 1 || newRows > 100 || newCols > 100
+  ) {
+    alert("Rows and columns must be numbers between 1 and 100.");
     return;
   }
 
-  // toggle coords with "c" (not while typing in inputs/textareas)
-  if (e.key.toLowerCase() === "c") {
-    const active = document.activeElement;
-    const tag = active && active.tagName;
-    if (tag === "INPUT" || tag === "TEXTAREA" || active.isContentEditable) return;
-    showCoords = !showCoords;
-    document.querySelectorAll(".coord").forEach(span => span.style.display = showCoords ? "block" : "none");
+  // preserve overlapping cells
+  const oldCells = layer.cells;
+  layer.cells = Array(newRows * newCols).fill(null);
+  for (let r = 0; r < Math.min(newRows, layer.rows); r++) {
+    for (let c = 0; c < Math.min(newCols, layer.cols); c++) {
+      const oldIdx = r * layer.cols + c;
+      const newIdx = r * newCols + c;
+      layer.cells[newIdx] = oldCells[oldIdx] || { value: "", bg: "white" };
+    }
   }
+
+  layer.rows = newRows;
+  layer.cols = newCols;
+
+  loadGrid();
 });
 
+/* ======= GRID LAYER SWITCHING ======= */
 document.addEventListener("keyup", (e) => {
   if (e.key !== "=" && e.key !== "-") return;
 
   const active = document.activeElement;
-  const isCellInput = active && active.classList && active.classList.contains("cell");
-  const isNotes = active === notesTop || (active && active.classList.contains("notes-bottom-sector"));
-  if (isCellInput || isNotes) return; // don’t switch if typing in notes or grid cells
+  if (active && (active.classList.contains("cell") || active === notesTop || active.classList.contains("notes-bottom-sector"))) return;
 
   saveGrid();
-  if (e.key === "=") currentGridIndex = (currentGridIndex + 1) % gridColors.length;
-  else currentGridIndex = (currentGridIndex - 1 + gridColors.length) % gridColors.length;
+  if (e.key === "=") currentGridIndex = (currentGridIndex + 1) % grids.length;
+  else currentGridIndex = (currentGridIndex - 1 + grids.length) % grids.length;
   loadGrid();
 });
 
@@ -251,7 +312,9 @@ colorButtons.forEach(btn => {
     showPalette(btn, e);
   });
 });
+
 const PALETTE_COLORS = ["#ffdddd","#fde0e0","#ffd6d6","#ffdede","#dde7ff","#ddefff","#dfefff","#ddffdd","#dfffe0","#fffacd","#ffe4b3","#f0ddff","#ffd6eb","#333333","#ffffff"];
+
 function showPalette(button, e) {
   palette.innerHTML = "";
   PALETTE_COLORS.forEach(c => {
@@ -271,13 +334,14 @@ function showPalette(button, e) {
   palette.style.left = x + "px";
   palette.style.top = y + "px";
 }
+
 document.addEventListener("click", (ev) => {
   if (!palette.contains(ev.target) && !colorButtons.includes(ev.target)) {
     palette.style.display = "none";
   }
 });
 
-/* ======= Bottom sectors ======= */
+/* ======= BOTTOM SECTORS ======= */
 function addSector() {
   const ta = document.createElement("textarea");
   ta.className = "notes-bottom-sector";
@@ -291,13 +355,13 @@ document.getElementById("addSector").addEventListener("click", addSector);
 document.getElementById("removeSector").addEventListener("click", removeSector);
 if (!notesBottomContainer.children.length) addSector();
 
-/* ======= Sidebar toggle ======= */
+/* ======= SIDEBAR TOGGLE ======= */
 toggleBtn.addEventListener("click", () => {
   sidebar.classList.toggle("collapsed");
   toggleBtn.textContent = sidebar.classList.contains("collapsed") ? "⏵" : "⏴";
 });
 
-/* ======= Autosave top notes ======= */
+/* ======= AUTOSAVE TOP NOTES ======= */
 notesTop.addEventListener("input", savePage);
 
 /* ======= INIT ======= */
