@@ -174,9 +174,20 @@ grids = gridColors.map(() => ({ cells: [], rows: 9, cols: 9 }));
 currentGridIndex = 0;
 
 function saveGrid() {
-  const cells = Array.from(grid.querySelectorAll(".cell"));
   const layer = grids[currentGridIndex];
-  layer.cells = cells.map(c => ({ value: c.value, bg: c.style.background || "white" }));
+  const wrappers = Array.from(grid.children);
+
+  layer.cells = wrappers.map((wrapper, i) => {
+    if (wrapper.classList.contains("cell-empty")) {
+      return { value: "", bg: "white", deleted: true };
+    }
+    const input = wrapper.querySelector("input.cell");
+    return {
+      value: input.value,
+      bg: input.style.background || "white",
+      deleted: false
+    };
+  });
 }
 
 function loadGrid() {
@@ -186,11 +197,20 @@ function loadGrid() {
   const cols = layer.cols || 9;
   const state = layer.cells || [];
 
-  // FIX: dynamically set grid columns so grid forms a rectangle/square
   grid.style.gridTemplateColumns = `repeat(${cols}, 60px)`;
   grid.style.gridAutoRows = `60px`;
 
   for (let i = 0; i < rows * cols; i++) {
+    const cellData = state[i] || { value: "", bg: "white", deleted: false };
+
+    if (cellData.deleted) {
+      const empty = document.createElement("div");
+      empty.className = "cell-empty";
+      empty.addEventListener("mousedown", () => { selectedCell = empty; });
+      grid.appendChild(empty);
+      continue;
+    }
+
     const wrapper = document.createElement("div");
     wrapper.className = "cell-wrapper";
 
@@ -198,6 +218,8 @@ function loadGrid() {
     input.className = "cell";
     input.setAttribute("maxlength", "2");
     input.style.borderColor = gridColors[currentGridIndex];
+    input.value = cellData.value;
+    input.style.background = cellData.bg;
 
     const rowIdx = Math.floor(i / cols);
     const colIdx = i % cols;
@@ -206,11 +228,6 @@ function loadGrid() {
     coord.className = "coord";
     coord.textContent = getColumnLetter(rowIdx) + (colIdx + 1);
     coord.style.display = showCoords ? "block" : "none";
-
-    if (state[i]) {
-      input.value = state[i].value;
-      input.style.background = state[i].bg;
-    }
 
     input.addEventListener("focus", () => { selectedCell = input; });
     input.addEventListener("mousedown", () => { selectedCell = input; });
@@ -225,8 +242,10 @@ function loadGrid() {
           for (let cc = c - 1; cc <= c + 1; cc++) {
             if (rr >= 0 && rr < rows && cc >= 0 && cc < cols) {
               const cell = cells[rr * cols + cc];
-              cell.value = "";
-              cell.style.background = "white";
+              if (cell) {
+                cell.value = "";
+                cell.style.background = "white";
+              }
             }
           }
         }
@@ -242,6 +261,23 @@ function loadGrid() {
   }
 }
 
+/* ======= DELETE / RECOVER CELLS ======= */
+document.addEventListener("keydown", (e) => {
+  if (e.key !== "Delete") return;
+  if (!selectedCell) return;
+
+  const layer = grids[currentGridIndex];
+  const wrappers = Array.from(grid.children);
+  const idx = wrappers.indexOf(selectedCell.closest(".cell-wrapper") || selectedCell);
+  if (idx === -1) return;
+
+  const cellData = layer.cells[idx] || { value: "", bg: "white", deleted: false };
+  cellData.deleted = !cellData.deleted;
+  layer.cells[idx] = cellData;
+
+  loadGrid(); // re-render
+  e.preventDefault();
+});
 
 /* ======= GRID SIZE POPUP BUTTON ======= */
 const gridSizeBtn = document.createElement("button");
@@ -270,14 +306,13 @@ gridSizeBtn.addEventListener("click", () => {
     return;
   }
 
-  // preserve overlapping cells
   const oldCells = layer.cells;
   layer.cells = Array(newRows * newCols).fill(null);
   for (let r = 0; r < Math.min(newRows, layer.rows); r++) {
     for (let c = 0; c < Math.min(newCols, layer.cols); c++) {
       const oldIdx = r * layer.cols + c;
       const newIdx = r * newCols + c;
-      layer.cells[newIdx] = oldCells[oldIdx] || { value: "", bg: "white" };
+      layer.cells[newIdx] = oldCells[oldIdx] || { value: "", bg: "white", deleted: false };
     }
   }
 
@@ -305,7 +340,9 @@ colorButtons.forEach(btn => {
   const computed = getComputedStyle(btn).backgroundColor;
   btn.dataset.color = computed;
   btn.addEventListener("click", () => {
-    if (selectedCell) selectedCell.style.background = btn.dataset.color;
+    if (selectedCell && selectedCell.classList.contains("cell")) {
+      selectedCell.style.background = btn.dataset.color;
+    }
   });
   btn.addEventListener("contextmenu", (e) => {
     e.preventDefault();
