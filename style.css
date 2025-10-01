@@ -143,7 +143,6 @@ body {
   max-width: 100%;
 }
 
-
 /* Wrapper for cell + coord */
 .cell-wrapper {
   width: 60px;
@@ -161,6 +160,15 @@ body {
   padding: 0;
   line-height: 56px;
 }
+/* Empty (deleted) cell */
+.cell-empty {
+  width: 60px;
+  height: 60px;
+  box-sizing: border-box;
+  border: 1px solid transparent; /* keeps spacing consistent */
+  background: transparent;
+}
+
 .cell-wrapper .cell:focus {
   outline: none;
   box-shadow: inset 0 0 0 3px rgba(30,144,255,0.15);
