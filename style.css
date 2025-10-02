@@ -50,6 +50,8 @@ body {
   background: white;
   z-index: 1;
   color: #111;
+  overflow-y: auto;
+  white-space: pre-wrap;
 }
 
 /* Canvas overlay */
@@ -247,3 +249,4 @@ body {
   color: #aaa;
   pointer-events: none;
 }
+
