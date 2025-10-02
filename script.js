@@ -28,7 +28,7 @@ let currentPage = 0;
 function savePage() {
   const ctx = drawCanvas.getContext("2d");
   pages[currentPage] = {
-    text: notesTop.value,
+    text: notesTop.innerHTML,
     drawing: drawCanvas.toDataURL()
   };
 }
@@ -36,11 +36,15 @@ function savePage() {
 // ======= CTRL/CMD + 1–4 COLOR SHORTCUTS =======
 document.addEventListener("keydown", (e) => {
   const isModifier = e.ctrlKey || e.metaKey; // Ctrl (Win) or Cmd (Mac)
+  const active = document.activeElement;
 
+  // =======================
+  // Ctrl/Cmd + 1–4: grid color
+  // =======================
   if (isModifier && ["1","2","3","4"].includes(e.key)) {
-    if (selectedCell) {
+    if (selectedCell && selectedCell.classList.contains("cell")) {
       const idx = parseInt(e.key, 10) - 1;
-      const color = colorButtons[idx] ? colorButtons[idx].dataset.color : null;
+      const color = colorButtons[idx]?.dataset.color;
       if (color) {
         const currentBg = selectedCell.style.background || "";
         selectedCell.style.background = (currentBg === color) ? "white" : color;
@@ -50,17 +54,78 @@ document.addEventListener("keydown", (e) => {
     return;
   }
 
-  // optional: toggle coordinates with 'c'
+  // =======================
+  // Ctrl/Cmd + 1 / 2: font size in contentEditable
+  // =======================
+  if (isModifier && (e.key === "5" || e.key === "6")) {
+    if (active && active.isContentEditable) {
+      e.preventDefault();
+
+      // get current font size
+      let fontSize = parseFloat(window.getComputedStyle(active).fontSize);
+
+      // increase or decrease
+      fontSize += e.key === "5" ? 2 : -2;
+
+      // clamp between 6px and 72px
+      fontSize = Math.max(6, Math.min(72, fontSize));
+
+      // apply directly to the element
+      active.style.fontSize = fontSize + "px";
+    }
+    return;
+  }
+  
+  // =======================
+  // Toggle coordinates with 'C'
+  // =======================
   if (e.key.toLowerCase() === "c") {
-    const active = document.activeElement;
-    const tag = active && active.tagName;
-    if (tag === "INPUT" || tag === "TEXTAREA" || active.isContentEditable) return;
+    // ignore if focused on editable
+    if (active && (active.tagName === "INPUT" || active.tagName === "TEXTAREA" || active.isContentEditable)) return;
+
     showCoords = !showCoords;
     document.querySelectorAll(".coord").forEach(span => 
       span.style.display = showCoords ? "block" : "none"
     );
+    e.preventDefault();
   }
+  // Numpad color shortcuts for contentEditable text
+if (active && active.isContentEditable) {
+  const numpadColorMap = {
+    Numpad1: "red",
+    Numpad2: "blue",
+    Numpad3: "green",
+    Numpad4: "yellow",
+	Numpad5: "purple",
+	Numpad6: "black",
+	Numpad7: "#FFD700",
+  };
+  const color = numpadColorMap[e.code];
+  
+  if (color) {
+    const selection = window.getSelection();
+    if (!selection.rangeCount) return;
+
+    const range = selection.getRangeAt(0);
+
+    // Only apply if text is actually selected
+    if (!range.collapsed) {
+      e.preventDefault();
+
+      // Wrap selected text in a span with the color
+      const span = document.createElement("span");
+      span.style.color = color;
+      try {
+        range.surroundContents(span);
+      } catch (err) {
+        // If the selection crosses multiple elements, fallback:
+        document.execCommand("foreColor", false, color);
+      }
+    }
+  }
+}
 });
+
 
 function getColumnLetter(n) {
   let letters = "";
@@ -73,7 +138,7 @@ function getColumnLetter(n) {
 
 function loadPage() {
   const page = pages[currentPage] || { text: "", drawing: null };
-  notesTop.value = page.text || "";
+  notesTop.innerHTML = page.text || "";
 
   resizeCanvas();
   const ctx = drawCanvas.getContext("2d");
@@ -380,10 +445,11 @@ document.addEventListener("click", (ev) => {
 
 /* ======= BOTTOM SECTORS ======= */
 function addSector() {
-  const ta = document.createElement("textarea");
-  ta.className = "notes-bottom-sector";
-  ta.placeholder = "Sector notes...";
-  notesBottomContainer.appendChild(ta);
+  const div = document.createElement("div");
+  div.className = "notes-bottom-sector";
+  div.contentEditable = "true";
+  div.setAttribute("data-placeholder", "Sector notes...");
+  notesBottomContainer.appendChild(div);
 }
 function removeSector() {
   if (notesBottomContainer.lastChild) notesBottomContainer.removeChild(notesBottomContainer.lastChild);
