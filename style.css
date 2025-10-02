@@ -84,7 +84,7 @@ body {
 /* Middle controls row */
 .bottom-controls-container {
   flex: none;
-  height: 10%;
+  height: 5%;
   min-height: 54px;
   display: flex;
   justify-content: space-between;
@@ -108,7 +108,7 @@ body {
 /* Bottom notes area */
 .notes-bottom-container {
   flex: none;
-  height: 20%;
+  height: 25%;
   min-height: 84px;
   display: flex;
   background: white;
@@ -241,4 +241,9 @@ body {
 /* Tiny grid resize button (JS handles positioning) */
 #gridSizeBtn {
   /* minimal style applied via JS */
+}
+[contenteditable=true]:empty:before {
+  content: attr(data-placeholder);
+  color: #aaa;
+  pointer-events: none;
 }
